@@ -1,3 +1,25 @@
+/*
+	Copyright 2015 Palm Stone Games, Inc.
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+		http://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
+/*
+This sessionStore package provides a store implementing the gorilla session store interface
+and using google datastore as its backend
+
+This package uses the new google.golang.org/appengine import path, not the old appengine path
+*/
 package datastoreStore
 
 import (
@@ -27,11 +49,11 @@ type Session struct {
 // If empty it will use "Session".
 //
 // See NewCookieStore() for a description of the other parameters.
-func New(kind string, keyPairs ...[]byte) *Store {
+func NewDatastoreStore(kind string, keyPairs ...[]byte) *DatastoreStore {
 	if kind == "" {
 		kind = "Session"
 	}
-	return &Store{
+	return &DatastoreStore{
 		Codecs: securecookie.CodecsFromPairs(keyPairs...),
 		Options: &sessions.Options{
 			Path:   "/",
@@ -42,7 +64,7 @@ func New(kind string, keyPairs ...[]byte) *Store {
 }
 
 // Store stores sessions in the App Engine datastore.
-type Store struct {
+type DatastoreStore struct {
 	Codecs  []securecookie.Codec
 	Options *sessions.Options // default configuration
 	kind    string
@@ -51,14 +73,14 @@ type Store struct {
 // Get returns a session for the given name after adding it to the registry.
 //
 // See CookieStore.Get().
-func (s *Store) Get(r *http.Request, name string) (*sessions.Session, error) {
+func (s *DatastoreStore) Get(r *http.Request, name string) (*sessions.Session, error) {
 	return sessions.GetRegistry(r).Get(s, name)
 }
 
 // New returns a session for the given name without adding it to the registry.
 //
 // See CookieStore.New().
-func (s *Store) New(r *http.Request, name string) (*sessions.Session, error) {
+func (s *DatastoreStore) New(r *http.Request, name string) (*sessions.Session, error) {
 	session := sessions.NewSession(s, name)
 	session.Options = &(*s.Options)
 	session.IsNew = true
@@ -76,7 +98,7 @@ func (s *Store) New(r *http.Request, name string) (*sessions.Session, error) {
 }
 
 // Save adds a single session to the response.
-func (s *Store) Save(r *http.Request, w http.ResponseWriter, session *sessions.Session) error {
+func (s *DatastoreStore) Save(r *http.Request, w http.ResponseWriter, session *sessions.Session) error {
 	if session.ID == "" {
 		session.ID = string(base64.StdEncoding.EncodeToString(securecookie.GenerateRandomKey(32)))
 	}
@@ -92,7 +114,7 @@ func (s *Store) Save(r *http.Request, w http.ResponseWriter, session *sessions.S
 }
 
 // save writes encoded session.Values to datastore.
-func (s *Store) save(r *http.Request, session *sessions.Session) error {
+func (s *DatastoreStore) save(r *http.Request, session *sessions.Session) error {
 	c := appengine.NewContext(r)
 	k := datastore.NewKey(c, s.kind, session.ID, 0, nil)
 
@@ -116,7 +138,7 @@ func (s *Store) save(r *http.Request, session *sessions.Session) error {
 
 // load gets a value from datastore and decodes its content into
 // session.Values.
-func (s *Store) load(r *http.Request, session *sessions.Session) error {
+func (s *DatastoreStore) load(r *http.Request, session *sessions.Session) error {
 	c := appengine.NewContext(r)
 	k := datastore.NewKey(c, s.kind, session.ID, 0, nil)
 	entity := Session{}
